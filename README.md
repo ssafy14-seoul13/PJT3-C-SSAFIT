@@ -140,7 +140,7 @@ protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IO
     req.getRequestDispatcher("/videoList.jsp").forward(req, resp);
 }
 }
-
+```
 ---
 
 ### Algo2: 리뷰 조회
@@ -166,7 +166,7 @@ protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IO
     req.getRequestDispatcher("/reviewList.jsp").forward(req, resp);
 }
 }
-
+```
 ---
 
 ### Algo3: 내 주변 헬스장 검색
@@ -206,7 +206,7 @@ private double haversine(double lat1, double lon1, double lat2, double lon2) {
     return R * c;
 }
 }
-
+```
 ---
 
 ### Algo4: 개인화 추천
@@ -232,7 +232,7 @@ protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IO
     req.getRequestDispatcher("/recommend.jsp").forward(req, resp);
 }
 }
-
+```
 ---
 
 ### Algo5: 운동 계획 최적화
@@ -273,7 +273,7 @@ protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IO
     req.getRequestDispatcher("/planResult.jsp").forward(req, resp);
 }
 }
-
+```
 ---
 
 ## 성능 분석 (Big-O)
