@@ -1,13 +1,17 @@
-# SSAFIT — 관통 프로젝트 README
+# SSAFIT
 
-> 운동 영상 기반 **부위별·인기순 추천**과 **리뷰/루틴 관리**를 제공하는 경량 서비스.
-> 본 프로젝트는 **JSP/Servlet 기반 MVC**로 구현되며, **자료구조·알고리즘 설계**를 통해 효율성을 확보합니다.
+---
+
+## 팀원
+
+* **채연 솔하**
 
 ---
 
 ## 목차
 
-- [SSAFIT — 관통 프로젝트 README](#ssafit--관통-프로젝트-readme)
+- [SSAFIT](#ssafit)
+  - [팀원](#팀원)
   - [목차](#목차)
   - [프로젝트 개요](#프로젝트-개요)
   - [목표](#목표)
@@ -32,8 +36,8 @@
 
 ## 프로젝트 개요
 
-**SSAFIT**은 운동 영상 데이터를 기반으로 사용자에게 **부위별·인기순 추천**과 **리뷰** 기능을 제공하는 **운동 루틴 추천 & 커뮤니티 서비스**입니다.
-본 프로젝트는 **JSP/Servlet 기반 MVC 아키텍처**로 구현되며, 서비스의 주요 기능을 적절한 **자료구조와 알고리즘**으로 설계하여 **성능·확장성**을 확보하는 것을 목표로 합니다.
+**SSAFIT**은 운동 영상 데이터를 기반으로 사용자에게 **부위별/인기순 추천**과 **리뷰** 기능을 제공하는 **운동 루틴 추천 & 커뮤니티 서비스**입니다.
+본 프로젝트는 **JSP/Servlet 기반 MVC 아키텍처**로 구현되며, 서비스의 주요 기능을 적절한 **자료구조와 알고리즘**으로 설계하여 **성능/확장성**을 확보하는 것을 목표로 합니다.
 
 ---
 
@@ -111,6 +115,31 @@
 * **복잡도:** **O(n log n)**
 * **장점:** 빠른 정렬 성능, **DB 인덱스 최적화**와 결합 시 실무 성능 우수
 * **단점:** 데이터셋이 매우 작을 때는 **삽입정렬** 등 단순 알고리즘이 더 효율적일 수 있음
+  
+```java
+
+@WebServlet("/video/search")
+public class VideoSearchServlet extends HttpServlet {
+    private VideoDao videoDao = new VideoDao();
+
+@Override
+protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
+    String keyword = req.getParameter("q");
+    String sort = req.getParameter("sort"); // popular, latest, review, duration
+
+    List<Video> list = videoDao.findAll(keyword);
+
+    switch (sort) {
+        case "popular" -> list.sort(Comparator.comparingInt(Video::getViews).reversed());
+        case "latest" -> list.sort(Comparator.comparing(Video::getCreatedAt).reversed());
+        case "review" -> list.sort(Comparator.comparingInt(Video::getReviewCount).reversed());
+        case "duration" -> list.sort(Comparator.comparingInt(Video::getDurationSec));
+    }
+
+    req.setAttribute("videos", list);
+    req.getRequestDispatcher("/videoList.jsp").forward(req, resp);
+}
+}
 
 ---
 
@@ -122,6 +151,22 @@
 * **장점:** 상세 모달 오픈 시 **즉시 렌더** UX 제공
 * **단점:** 대규모 리뷰에서 **해시 충돌/메모리 관리** 필요 (캐시 TTL/무효화 전략 병행)
 
+```java
+@WebServlet("/review/list")
+public class ReviewListServlet extends HttpServlet {
+    private ReviewDao reviewDao = new ReviewDao();
+
+@Override
+protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
+    long videoId = Long.parseLong(req.getParameter("videoId"));
+    // HashMap<videoId, List<Review>> 캐싱 가능
+    List<Review> reviews = reviewDao.findByVideoId(videoId);
+
+    req.setAttribute("reviews", reviews);
+    req.getRequestDispatcher("/reviewList.jsp").forward(req, resp);
+}
+}
+
 ---
 
 ### Algo3: 내 주변 헬스장 검색
@@ -131,6 +176,36 @@
 * **복잡도:** 선형 **O(n)** → 공간 분할(k-d Tree, R-Tree)·**SPATIAL INDEX** 적용 시 후보 축소로 성능 향상
 * **장점:** **위치 기반 맞춤 서비스** 구현
 * **단점:** **GPS 오차**, **권한 허용 UX** 이슈
+
+```java
+@WebServlet("/gym/nearby")
+public class GymSearchServlet extends HttpServlet {
+    private GymDao gymDao = new GymDao();
+
+@Override
+protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
+    double myLat = Double.parseDouble(req.getParameter("lat"));
+    double myLng = Double.parseDouble(req.getParameter("lng"));
+
+    List<Gym> gyms = gymDao.findAll();
+
+    gyms.sort(Comparator.comparingDouble(g -> haversine(myLat, myLng, g.getLat(), g.getLng())));
+
+    req.setAttribute("gyms", gyms);
+    req.getRequestDispatcher("/gymList.jsp").forward(req, resp);
+}
+
+private double haversine(double lat1, double lon1, double lat2, double lon2) {
+    double R = 6371e3; // 지구 반지름 (m)
+    double dLat = Math.toRadians(lat2 - lat1);
+    double dLon = Math.toRadians(lon2 - lon1);
+    double a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+    double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+}
 
 ---
 
@@ -142,6 +217,22 @@
 * **장점:** **개인화**로 만족도/체류시간/재방문율 상승
 * **단점:** **콜드스타트**(신규 사용자/아이템) 발생 → 인기순과 **하이브리드**로 완화
 
+```java
+@WebServlet("/recommend")
+public class RecommendServlet extends HttpServlet {
+    private RecommendService recommendService = new RecommendService();
+
+@Override
+protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
+    long userId = Long.parseLong(req.getParameter("userId"));
+
+    List<Video> recs = recommendService.recommend(userId);
+
+    req.setAttribute("recommendations", recs);
+    req.getRequestDispatcher("/recommend.jsp").forward(req, resp);
+}
+}
+
 ---
 
 ### Algo5: 운동 계획 최적화
@@ -151,6 +242,37 @@
 * **복잡도:** **O(n·W)** (n=운동 개수, W=총 시간)
 * **장점:** **제약 최적화**로 “최적 루틴” 자동 제안
 * **단점:** 입력 규모 커지면 계산량 증가 → **그리디/휴리스틱** 병행 고려
+
+```java
+@WebServlet("/plan/optimize")
+public class PlanOptimizeServlet extends HttpServlet {
+    private PlanDao planDao = new PlanDao();
+
+@Override
+protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
+    int totalTime = Integer.parseInt(req.getParameter("time")); // ex) 하루 60분
+    List<Exercise> exercises = planDao.findAll();
+
+    // DP: 0-1 Knapsack 유사
+    int n = exercises.size();
+    int[][] dp = new int[n+1][totalTime+1];
+
+    for (int i=1; i<=n; i++) {
+        Exercise ex = exercises.get(i-1);
+        for (int t=0; t<=totalTime; t++) {
+            if (ex.getTime() <= t) {
+                dp[i][t] = Math.max(dp[i-1][t], dp[i-1][t-ex.getTime()] + ex.getEffect());
+            } else {
+                dp[i][t] = dp[i-1][t];
+            }
+        }
+    }
+
+    int maxEffect = dp[n][totalTime];
+    req.setAttribute("maxEffect", maxEffect);
+    req.getRequestDispatcher("/planResult.jsp").forward(req, resp);
+}
+}
 
 ---
 
